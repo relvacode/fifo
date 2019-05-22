@@ -39,7 +39,9 @@ type Task struct {
 
 	Targets map[string]string
 
-	// Stdout is the target URN (if defined) for the output of the command
+	Stdin *string
+
+	// Stdout is the target URL (if defined) for the output of the command
 	Stdout *string
 	Stderr *string
 }
@@ -102,6 +104,19 @@ func (t *Task) SetupTargetPipes() (Targets, error) {
 	}
 
 	return targets, nil
+}
+
+func (t *Task) SetupInput() (io.ReadCloser, error) {
+	if t.Stdin == nil {
+		return os.Stdin, nil
+	}
+
+	u, err := url.Parse(*t.Stdin)
+	if err != nil {
+		return nil, err
+	}
+
+	return ProvideSource(u, t.Providers...)
 }
 
 type NoOpWriteDestroyCloser struct {

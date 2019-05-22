@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"github.com/pkg/errors"
-	"os"
 	"os/exec"
 	"text/template"
 )
@@ -101,6 +100,14 @@ func (c *Command) Start(ctx context.Context) (mu *MultiError) {
 		return
 	}
 
+	stdin, err := c.t.SetupInput()
+	if err != nil {
+		mu.Append(errors.Wrap(err, "unable to setup input"))
+		return
+	}
+
+	defer mu.Catch(stdin.Close)
+
 	// Setup output for stdout and stderr
 	stdout, stderr, err := c.t.SetupOutput()
 	if err != nil {
@@ -114,7 +121,7 @@ func (c *Command) Start(ctx context.Context) (mu *MultiError) {
 	defer mu.Catch(stdout.Close, stderr.Close)
 
 	p := exec.CommandContext(ctx, bin, args...)
-	p.Stdin = os.Stdin
+	p.Stdin = stdin
 	p.Stdout = stdout
 	p.Stderr = stderr
 

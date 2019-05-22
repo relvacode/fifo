@@ -18,8 +18,9 @@ type Options struct {
 	Preserve      bool   `long:"preserve" description:"Preserve created targets on command failure"`
 	PipeDirectory string `long:"pipes" description:"Location on filesystem to mount pipes (default: tmp)"`
 
-	Stdout *string `long:"stdout" description:"Write command STDOUT to this target"`
-	Stderr *string `long:"stderr" description:"Write command STDERR to this target"`
+	Stdin  *string `long:"stdin" description:"Read command STDIN from this target (default: STDIN)"`
+	Stdout *string `long:"stdout" description:"Write command STDOUT to this target (default: STDOUT)"`
+	Stderr *string `long:"stderr" description:"Write command STDERR to this target (default: STDERR)"`
 }
 
 func Main() error {
@@ -65,6 +66,7 @@ func Main() error {
 		Sources: o.Sources,
 		Targets: o.Targets,
 
+		Stdin:  o.Stdin,
 		Stdout: o.Stdout,
 		Stderr: o.Stderr,
 	}
