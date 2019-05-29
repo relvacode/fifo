@@ -50,7 +50,22 @@ func destroy(mu *MultiError, targets ...WriteDestroyCloser) {
 	}
 }
 
-func (c *Command) Start(ctx context.Context) (mu *MultiError) {
+// wait for a given command to finish and collect its exit code.
+func wait(p *exec.Cmd) (int, error) {
+	err := p.Wait()
+	if err == nil {
+		return 0, nil
+	}
+
+	ex, ok := err.(*exec.ExitError)
+	if !ok {
+		return 1, err
+	}
+
+	return ex.ExitCode(), nil
+}
+
+func (c *Command) Start(ctx context.Context) (code int, mu *MultiError) {
 	mu = new(MultiError)
 
 	sources, err := c.t.SetupSourcePipes()
@@ -150,7 +165,8 @@ func (c *Command) Start(ctx context.Context) (mu *MultiError) {
 	// wait from the copy groups to complete
 	mu.Append(g.Wait())
 
-	// wait for the command to complete
-	mu.Append(p.Wait())
+	// wait for the command to complete and capture the error code
+	code, err = wait(p)
+	mu.Append(err)
 	return
 }

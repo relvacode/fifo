@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/jessevdk/go-flags"
 	"github.com/relvacode/fifo"
-	"github.com/sirupsen/logrus"
 	"io/ioutil"
-	"log"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 type Options struct {
@@ -23,14 +25,32 @@ type Options struct {
 	Stderr *string `long:"stderr" description:"Write command STDERR to this target (default: STDERR)"`
 }
 
-func Main() error {
+func signalContext(ctx context.Context, signals ...os.Signal) context.Context {
+	ctx, cancel := context.WithCancel(ctx)
+	sig := make(chan os.Signal, len(signals))
+	signal.Notify(sig, signals...)
+	go func() {
+		select {
+		case <-ctx.Done():
+			return
+		case <-sig:
+			cancel()
+		}
+	}()
+
+	return ctx
+}
+
+func Main() (code int, mu *fifo.MultiError) {
+
 	o := new(Options)
 	p := flags.NewParser(o, flags.PassDoubleDash|flags.HelpFlag)
 	p.Name = "FiFo"
 	p.ShortDescription = "Native Cloud Streaming for Legacy Tooling"
 	args, err := p.Parse()
 	if err != nil {
-		return err
+		mu = fifo.Catch(mu, err)
+		return
 	}
 
 	// Setup directory to mount pipes
@@ -38,7 +58,8 @@ func Main() error {
 	if mountOn == "" {
 		d, err := ioutil.TempDir("", "fifo")
 		if err != nil {
-			return err
+			mu = fifo.Catch(mu, err)
+			return
 		}
 
 		defer os.RemoveAll(d)
@@ -55,6 +76,9 @@ func Main() error {
 		Providers: []fifo.Provider{
 			fifo.FileProvider{
 				Create: os.FileMode(0666),
+			},
+			&fifo.HTTPProvider{
+				Client: http.DefaultClient,
 			},
 			&fifo.S3Provider{
 				AccessKeyID: os.Getenv("AWS_ACCESS_KEY_ID"),
@@ -73,24 +97,30 @@ func Main() error {
 
 	c, err := fifo.NewCommand(t)
 	if err != nil {
-		return err
+		mu = fifo.Catch(mu, err)
+		return
 	}
 
-	errs := c.Start(context.Background()).Errors()
-	if len(errs) > 0 {
-		for _, err = range errs[:len(errs)-1] {
-			logrus.Error(err)
-		}
-		return errs[len(errs)-1]
-	}
-	return nil
+	// Handle cancellation signals
+	ctx := signalContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+
+	code, pmu := c.Start(ctx)
+	mu = fifo.Catch(mu, pmu)
+
+	return
 }
 
 func main() {
-	logrus.SetLevel(logrus.DebugLevel)
-
-	err := Main()
-	if err != nil {
-		log.Fatal(err)
+	code, err := Main()
+	errs := err.Errors()
+	if len(errs) > 0 {
+		for _, e := range errs {
+			_, _ = fmt.Fprintf(os.Stderr, "  * %v\n", e)
+		}
+		if code < 1 {
+			code = 1
+		}
 	}
+
+	os.Exit(code)
 }

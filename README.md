@@ -1,6 +1,6 @@
 # FiFo
 
-Real-time data streaming to S3 and other back-ends using the power of named pipes.
+Real-time data streaming to and from S3 and other back-ends using the power of named pipes.
 
 Allows legacy applications to easily stream data to file stores like S3 without the need for FUSE file systems.
 
@@ -43,6 +43,14 @@ Requires the environment parameters `AWS_ACCESS_KEY`, `AWS_SECRET_KEY` and `AWS_
 
 ```
 s3://bucket/path/to/file.txt
+```
+
+#### `http://`, `https://`
+
+Stream a HTTP URL
+
+```
+https://httpbin.org/stream/1
 ```
 
 ## Considerations

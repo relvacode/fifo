@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rlmcpherson/s3gof3r"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -133,6 +134,7 @@ func (p S3Provider) Bucket(u *url.URL) *s3gof3r.Bucket {
 	*c = *s3gof3r.DefaultConfig
 	c.PathStyle = p.PathAddressing
 	c.Md5Check = false
+	c.Concurrency = 4
 
 	if u.Scheme == "s3+insecure" {
 		c.Scheme = "http"
@@ -161,4 +163,29 @@ func (p S3Provider) Write(u *url.URL) (WriteDestroyCloser, error) {
 		Bucket:      b,
 		WriteCloser: w,
 	}, nil
+}
+
+// HTTPProvider provides a source from an HTTP url
+type HTTPProvider struct {
+	Client *http.Client
+}
+
+func (p *HTTPProvider) Schema() []string {
+	return []string{"http", "https"}
+}
+
+func (p *HTTPProvider) Read(u *url.URL) (io.ReadCloser, error) {
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", "fifo/0.1a")
+
+	resp, err := p.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Body, nil
 }
