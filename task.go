@@ -1,7 +1,7 @@
 package fifo
 
 import (
-	"github.com/pkg/errors"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -11,20 +11,21 @@ import (
 )
 
 type Call struct {
-	Binary string
-	Args   []string
-	Shell  string
+	Executable string
+	Shell      string
+	Args       []string
+	Environment   []string
 }
 
 func (c Call) Cmdline() (string, []string) {
 	if c.Shell != "" {
 		return c.Shell, []string{
 			"-c",
-			strings.Join(append([]string{c.Binary}, c.Args...), " "),
+			strings.Join(append([]string{c.Executable}, c.Args...), " "),
 		}
 	}
 
-	return c.Binary, c.Args
+	return c.Executable, c.Args
 }
 
 type Task struct {
@@ -35,88 +36,63 @@ type Task struct {
 	Providers      []Provider
 
 	// Sources provides a mapping of directory local named pipes to their equivalent URL
-	Sources map[string]string
+	Sources UrlMapping
+	Targets UrlMapping
 
-	Targets map[string]string
-
-	Stdin *string
+	Stdin *Url
 
 	// Stdout is the target URL (if defined) for the output of the command
-	Stdout *string
-	Stderr *string
+	Stdout *Url
+	Stderr *Url
 }
 
-func (t *Task) SetupSourcePipes() (Sources, error) {
-	sources := make(Sources, len(t.Sources))
-	for name, urn := range t.Sources {
-		u, err := url.Parse(urn)
-		if err != nil {
-			return nil, err
-		}
+func (t *Task) Source(u *url.URL) (*SourcePipe, error) {
+	rel := filepath.Join(t.MountDirectory, urlToFilename(u))
+	fmt.Println(rel)
 
-		rel := filepath.Join(t.MountDirectory, name)
-
-		s, err := ProvideSource(u, t.Providers...)
-		if err != nil {
-			return nil, errors.Wrap(err, name)
-		}
-
-		err = syscall.Mkfifo(rel, 0666)
-		if err != nil {
-			return nil, errors.Wrapf(err, "mkfifo on %q", name)
-		}
-
-		sources[name] = &SourcePipe{
-			Path:   rel,
-			URL:    u,
-			Stream: s,
-		}
+	s, err := ProvideSource(u, t.Providers...)
+	if err != nil {
+		return nil, err
 	}
 
-	return sources, nil
+	err = syscall.Mkfifo(rel, 0666)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SourcePipe{
+		Path:   rel,
+		URL:    u,
+		Stream: s,
+	}, nil
 }
 
-func (t *Task) SetupTargetPipes() (Targets, error) {
-	targets := make(Targets, len(t.Targets))
-	for name, urn := range t.Targets {
-		u, err := url.Parse(urn)
-		if err != nil {
-			return nil, err
-		}
+func (t *Task) Target(u *url.URL) (*TargetPipe, error) {
+	rel := filepath.Join(t.MountDirectory, urlToFilename(u))
+	fmt.Println(rel)
 
-		rel := filepath.Join(t.MountDirectory, name)
-
-		s, err := ProvideTarget(u, t.Providers...)
-		if err != nil {
-			return nil, errors.Wrap(err, name)
-		}
-
-		err = syscall.Mkfifo(rel, 0666)
-		if err != nil {
-			return nil, errors.Wrapf(err, "mkfifo on %q", name)
-		}
-
-		targets[name] = &TargetPipe{
-			Path:   rel,
-			URL:    u,
-			Stream: s,
-		}
+	s, err := ProvideTarget(u, t.Providers...)
+	if err != nil {
+		return nil, err
 	}
 
-	return targets, nil
+	err = syscall.Mkfifo(rel, 0666)
+	if err != nil {
+		return nil, err
+	}
+
+	return &TargetPipe{
+		Path:   rel,
+		URL:    u,
+		Stream: s,
+	}, nil
 }
 
 func (t *Task) SetupInput() (io.ReadCloser, error) {
 	if t.Stdin == nil {
 		return os.Stdin, nil
 	}
-
-	u, err := url.Parse(*t.Stdin)
-	if err != nil {
-		return nil, err
-	}
-
-	return ProvideSource(u, t.Providers...)
+	return ProvideSource((*url.URL)(t.Stdin), t.Providers...)
 }
 
 type NoOpWriteDestroyCloser struct {
@@ -132,13 +108,8 @@ func (NoOpWriteDestroyCloser) Destroy() error {
 }
 
 func (t *Task) SetupOutput() (stdout WriteDestroyCloser, stderr WriteDestroyCloser, err error) {
-	var u *url.URL
 	if t.Stdout != nil {
-		u, err = url.Parse(*t.Stdout)
-		if err != nil {
-			return
-		}
-		stdout, err = ProvideTarget(u, t.Providers...)
+		stdout, err = ProvideTarget((*url.URL)(t.Stdout), t.Providers...)
 		if err != nil {
 			return
 		}
@@ -147,11 +118,7 @@ func (t *Task) SetupOutput() (stdout WriteDestroyCloser, stderr WriteDestroyClos
 	}
 
 	if t.Stderr != nil {
-		u, err = url.Parse(*t.Stderr)
-		if err != nil {
-			return
-		}
-		stderr, err = ProvideTarget(u, t.Providers...)
+		stderr, err = ProvideTarget((*url.URL)(t.Stderr), t.Providers...)
 		if err != nil {
 			return
 		}

@@ -148,7 +148,7 @@ func (p S3Provider) Bucket(u *url.URL) *s3gof3r.Bucket {
 
 func (p S3Provider) Read(u *url.URL) (io.ReadCloser, error) {
 	b := p.Bucket(u)
-	r, _, err := b.GetReader(u.Path, b.Config)
+	r, _, err := b.GetReader(u.Path, nil)
 	return r, err
 }
 

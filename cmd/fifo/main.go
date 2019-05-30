@@ -13,16 +13,16 @@ import (
 )
 
 type Options struct {
-	Sources map[string]string `short:"s" long:"source" description:"Describe input sources"`
-	Targets map[string]string `short:"t" long:"target" description:"Describe targets"`
-	Shell   string            `long:"shell" default:"sh" description:"Command shell"`
+	Sources fifo.UrlMapping `short:"s" long:"source" description:"Describe input sources"`
+	Targets fifo.UrlMapping `short:"t" long:"target" description:"Describe targets"`
+	Shell   string          `long:"shell" default:"sh" description:"Command shell"`
 
 	Preserve      bool   `long:"preserve" description:"Preserve created targets on command failure"`
 	PipeDirectory string `long:"pipes" description:"Location on filesystem to mount pipes (default: tmp)"`
 
-	Stdin  *string `long:"stdin" description:"Read command STDIN from this target (default: STDIN)"`
-	Stdout *string `long:"stdout" description:"Write command STDOUT to this target (default: STDOUT)"`
-	Stderr *string `long:"stderr" description:"Write command STDERR to this target (default: STDERR)"`
+	Stdin  *fifo.Url `long:"stdin" description:"Read command STDIN from this target (default: STDIN)"`
+	Stdout *fifo.Url `long:"stdout" description:"Write command STDOUT to this target (default: STDOUT)"`
+	Stderr *fifo.Url `long:"stderr" description:"Write command STDERR to this target (default: STDERR)"`
 }
 
 func signalContext(ctx context.Context, signals ...os.Signal) context.Context {
@@ -67,9 +67,10 @@ func Main() (code int, mu *fifo.MultiError) {
 
 	t := &fifo.Task{
 		Call: fifo.Call{
-			Binary: args[0],
-			Args:   args[1:],
-			Shell:  o.Shell,
+			Shell:       o.Shell,
+			Executable:  args[0],
+			Args:        args[1:],
+			Environment: os.Environ(),
 		},
 		Preserve:       o.Preserve,
 		MountDirectory: mountOn,
