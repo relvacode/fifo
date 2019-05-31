@@ -1,7 +1,6 @@
 package fifo
 
 import (
-	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -48,7 +47,6 @@ type Task struct {
 
 func (t *Task) Source(u *url.URL) (*SourcePipe, error) {
 	rel := filepath.Join(t.MountDirectory, urlToFilename(u))
-	fmt.Println(rel)
 
 	s, err := ProvideSource(u, t.Providers...)
 	if err != nil {
@@ -69,7 +67,6 @@ func (t *Task) Source(u *url.URL) (*SourcePipe, error) {
 
 func (t *Task) Target(u *url.URL) (*TargetPipe, error) {
 	rel := filepath.Join(t.MountDirectory, urlToFilename(u))
-	fmt.Println(rel)
 
 	s, err := ProvideTarget(u, t.Providers...)
 	if err != nil {

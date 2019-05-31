@@ -12,17 +12,20 @@ import (
 	"syscall"
 )
 
-type Options struct {
+type TaskOptions struct {
 	Sources fifo.UrlMapping `short:"s" long:"source" description:"Describe input sources"`
 	Targets fifo.UrlMapping `short:"t" long:"target" description:"Describe targets"`
 	Shell   string          `long:"shell" default:"sh" description:"Command shell"`
 
-	Preserve      bool   `long:"preserve" description:"Preserve created targets on command failure"`
-	PipeDirectory string `long:"pipes" description:"Location on filesystem to mount pipes (default: tmp)"`
+	Preserve bool `long:"preserve" description:"Preserve created targets on command failure"`
 
 	Stdin  *fifo.Url `long:"stdin" description:"Read command STDIN from this target (default: STDIN)"`
 	Stdout *fifo.Url `long:"stdout" description:"Write command STDOUT to this target (default: STDOUT)"`
 	Stderr *fifo.Url `long:"stderr" description:"Write command STDERR to this target (default: STDERR)"`
+}
+
+type Options struct {
+	TaskOptions `group:"Task Options"`
 }
 
 func signalContext(ctx context.Context, signals ...os.Signal) context.Context {
@@ -42,11 +45,10 @@ func signalContext(ctx context.Context, signals ...os.Signal) context.Context {
 }
 
 func Main() (code int, mu *fifo.MultiError) {
-
 	o := new(Options)
 	p := flags.NewParser(o, flags.PassDoubleDash|flags.HelpFlag)
-	p.Name = "FiFo"
-	p.ShortDescription = "Native Cloud Streaming for Legacy Tooling"
+	p.Name = "fifo"
+	p.LongDescription = "Native Cloud Streaming for Legacy Executables"
 	args, err := p.Parse()
 	if err != nil {
 		mu = fifo.Catch(mu, err)
@@ -54,16 +56,15 @@ func Main() (code int, mu *fifo.MultiError) {
 	}
 
 	// Setup directory to mount pipes
-	var mountOn = o.PipeDirectory
-	if mountOn == "" {
-		d, err := ioutil.TempDir("", "fifo")
-		if err != nil {
-			mu = fifo.Catch(mu, err)
-			return
-		}
-
-		defer os.RemoveAll(d)
+	temporaryLocation, err := ioutil.TempDir("", "fifo")
+	if err != nil {
+		mu = fifo.Catch(mu, err)
+		return
 	}
+
+	defer func() {
+		mu.Append(os.RemoveAll(temporaryLocation))
+	}()
 
 	t := &fifo.Task{
 		Call: fifo.Call{
@@ -73,7 +74,7 @@ func Main() (code int, mu *fifo.MultiError) {
 			Environment: os.Environ(),
 		},
 		Preserve:       o.Preserve,
-		MountDirectory: mountOn,
+		MountDirectory: temporaryLocation,
 		Providers: []fifo.Provider{
 			fifo.FileProvider{
 				Create: os.FileMode(0666),
@@ -82,9 +83,9 @@ func Main() (code int, mu *fifo.MultiError) {
 				Client: http.DefaultClient,
 			},
 			&fifo.S3Provider{
-				AccessKeyID: os.Getenv("AWS_ACCESS_KEY_ID"),
-				SecretKey:   os.Getenv("AWS_SECRET_ACCESS_KEY"),
-				Endpoint:    os.Getenv("AWS_ENDPOINT"),
+				AccessKeyID:    os.Getenv("AWS_ACCESS_KEY_ID"),
+				SecretKey:      os.Getenv("AWS_SECRET_ACCESS_KEY"),
+				Endpoint:       os.Getenv("AWS_ENDPOINT"),
 			},
 		},
 

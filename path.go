@@ -27,9 +27,9 @@ type UrlMapping map[string]*Url
 // UnmarshalFlag implements un-marshalling a flag value into the URL mapping.
 // Where the format is key:url
 func (m UrlMapping) UnmarshalFlag(value string) error {
-	parts := strings.Split(value, ":")
+	parts := strings.Split(value, "=")
 	if len(parts) < 2 {
-		return errors.Errorf("expected key:value format of flag")
+		return errors.Errorf("expected tag=url format of flag")
 	}
 
 	u := new(Url)
@@ -38,10 +38,9 @@ func (m UrlMapping) UnmarshalFlag(value string) error {
 		return err
 	}
 
- 	m[parts[0]] = u
+	m[parts[0]] = u
 	return nil
 }
-
 
 type runeWriter interface {
 	WriteRune(r rune) (n int, err error)
@@ -51,10 +50,10 @@ var filenameRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 var extensionRunes = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 
 func randExtensionString(w runeWriter, n int) {
-	_, _ = w.WriteRune('.')
 	for i := 0; i < n; i ++ {
 		_, _ = w.WriteRune(extensionRunes[rand.Intn(len(extensionRunes))])
 	}
+	_, _ = w.WriteRune('.')
 }
 
 // urlToFilename sanitises a URL into a name compatible with any file system.
@@ -62,6 +61,8 @@ func randExtensionString(w runeWriter, n int) {
 func urlToFilename(u *url.URL) string {
 	var s = u.String()
 	var b bytes.Buffer
+	randExtensionString(&b, 6)
+
 scan:
 	for _, r := range s {
 		for _, xr := range filenameRunes {
@@ -72,6 +73,5 @@ scan:
 		}
 		b.WriteRune('_')
 	}
-	randExtensionString(&b, 6)
 	return b.String()
 }

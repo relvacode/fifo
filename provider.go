@@ -114,10 +114,9 @@ func (o *DestroyableS3Object) Destroy() error {
 
 // Provides files from an S3-like HTTP interface
 type S3Provider struct {
-	AccessKeyID    string
-	SecretKey      string
-	Endpoint       string
-	PathAddressing bool
+	AccessKeyID string
+	SecretKey   string
+	Endpoint    string
 }
 
 func (S3Provider) Schema() []string {
@@ -132,7 +131,7 @@ func (p S3Provider) Bucket(u *url.URL) *s3gof3r.Bucket {
 
 	c := new(s3gof3r.Config)
 	*c = *s3gof3r.DefaultConfig
-	c.PathStyle = p.PathAddressing
+
 	c.Md5Check = false
 	c.Concurrency = 4
 
