@@ -16,13 +16,13 @@ Using Go templates define what sources and targets to use as command line argume
 __Calculate the MD5 sum of a file in S3 using openssl__
 
 ```
-fifo -s input:s3://bucket/file.txt -- openssl md5 %{input}
+fifo -s input=s3://bucket/file.txt -- openssl md5 %{input}
 ```
 
 __Grep a file in S3 and upload the matches to S3__
 
 ```
-fifo -s log:s3://bucket/log-file.txt --stdout s3://bucket/grepped.txt -- grep something %{log}
+fifo -s log=s3://bucket/log-file.txt --stdout s3://bucket/grepped.txt -- grep something %{log}
 ```
 
 ## Providers
