@@ -13,6 +13,12 @@ Using Go templates define what sources and targets to use as command line argume
 
 ## Examples
 
+__Backup a directory to a tar archive in S3__
+
+```
+fifo -t archive=s3://bucket/archive.tar.gz -- tar -C /directory -cvz . -f %{archive}
+```
+
 __Calculate the MD5 sum of a file in S3 using openssl__
 
 ```

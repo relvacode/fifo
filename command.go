@@ -3,7 +3,9 @@ package fifo
 import (
 	"context"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 	"os/exec"
+	"syscall"
 )
 
 func NewCommand(t *Task) (*Command, error) {
@@ -95,14 +97,16 @@ func (c *Command) Start(ctx context.Context) (code int, mu *MultiError) {
 	p.Stdout = stdout
 	p.Stderr = stderr
 	p.Env = c.t.Call.Environment
+	if c.t.Call.WorkingDirectory != "" {
+		p.Dir = c.t.Call.WorkingDirectory
+	}
 
-	ctx, g := NewGroup(ctx)
+	g, ctx := errgroup.WithContext(ctx)
 
 	if len(gen.Targets) > 0 {
 		// the named pipe for receiving data from the command needs to be setup before the command starts
-		g.Go(func() (mu *MultiError) {
-			mu = Catch(mu, gen.Targets.Copy(ctx))
-			return
+		g.Go(func() error {
+			return gen.Targets.Copy(ctx)
 		})
 	}
 
@@ -112,14 +116,18 @@ func (c *Command) Start(ctx context.Context) (code int, mu *MultiError) {
 
 	if len(gen.Sources) > 0 {
 		// named pipe for writing data to the command needs to be setup after the command starts
-		g.Go(func() (mu *MultiError) {
-			mu = Catch(mu, gen.Sources.Copy(ctx))
-			return
+		g.Go(func() error {
+			return gen.Sources.Copy(ctx)
 		})
 	}
 
 	// wait from the copy groups to complete
 	mu.Append(g.Wait())
+
+	// If we had errors processing IO then signal the process to prematurely SIGTERM
+	if len(mu.Errors()) > 0 {
+		mu.Append(p.Process.Signal(syscall.SIGTERM))
+	}
 
 	// wait for the command to complete and capture the error code
 	code, err = wait(p)

@@ -2,14 +2,24 @@ package fifo
 
 import "fmt"
 
-func Catch(mu *MultiError, err error) *MultiError {
-	if err == nil {
+func Catch(mu *MultiError, err ...error) *MultiError {
+	if err == nil || len(err) == 0 {
 		return nil
 	}
 	if mu == nil {
 		mu = new(MultiError)
 	}
-	mu.Append(err)
+
+	var containsNonNilError bool
+	for _, e := range err {
+		if e != nil {
+			containsNonNilError = true
+		}
+		mu.Append(e)
+	}
+	if !containsNonNilError {
+		return nil
+	}
 	return mu
 }
 
@@ -41,6 +51,8 @@ func (mu *MultiError) Catch(funcs ...func() error) (failure bool) {
 	return
 }
 
+type ErrorFunc func() *MultiError
+
 func (mu *MultiError) CatchMulti(funcs ...ErrorFunc) (failure bool) {
 	for _, f := range funcs {
 		err := f()
@@ -62,4 +74,11 @@ func (mu *MultiError) Errors() []error {
 		return nil
 	}
 	return mu.err
+}
+
+func (mu *MultiError) ErrorOrNil() error {
+	if mu == nil || len(mu.err) == 0 {
+		return nil
+	}
+	return mu
 }

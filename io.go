@@ -2,6 +2,7 @@ package fifo
 
 import (
 	"context"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"net/url"
 	"os"
@@ -18,19 +19,16 @@ type Sources []*SourcePipe
 
 // Copy starts copying data from each source stream to each existing named pipe
 func (s Sources) Copy(ctx context.Context) error {
-	ctx, g := NewGroup(ctx)
+	g, ctx := errgroup.WithContext(ctx)
 	for _, src := range s {
 		pipe, err := os.OpenFile(src.Path, os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			return err
 		}
 
-		g.Go(func() (mu *MultiError) {
+		g.Go(func() error {
 			_, err := io.Copy(pipe, src.Stream)
-			mu = Catch(mu, err)
-			mu = Catch(mu, pipe.Close())
-			mu = Catch(mu, src.Stream.Close())
-			return
+			return Catch(nil, err, pipe.Close(), src.Stream.Close()).ErrorOrNil()
 		})
 	}
 
@@ -54,19 +52,16 @@ type TargetPipe struct {
 type Targets []*TargetPipe
 
 func (t Targets) Copy(ctx context.Context) error {
-	ctx, g := NewGroup(ctx)
+	g, ctx := errgroup.WithContext(ctx)
 	for _, tg := range t {
 		pipe, err := os.OpenFile(tg.Path, os.O_RDONLY, 0600)
 		if err != nil {
 			return err
 		}
 
-		g.Go(func() (mu *MultiError) {
+		g.Go(func() error {
 			_, err := io.Copy(tg.Stream, pipe)
-			mu = Catch(mu, err)
-			mu = Catch(mu, tg.Stream.Close())
-			mu = Catch(mu, pipe.Close())
-			return
+			return Catch(nil, err, tg.Stream.Close(), pipe.Close()).ErrorOrNil()
 		})
 	}
 

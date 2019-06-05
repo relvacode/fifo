@@ -10,10 +10,11 @@ import (
 )
 
 type Call struct {
-	Executable string
-	Shell      string
-	Args       []string
-	Environment   []string
+	Executable       string
+	Shell            string
+	Args             []string
+	Environment      []string
+	WorkingDirectory string
 }
 
 func (c Call) Cmdline() (string, []string) {

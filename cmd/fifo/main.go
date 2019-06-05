@@ -15,7 +15,7 @@ import (
 type TaskOptions struct {
 	Sources fifo.UrlMapping `short:"s" long:"source" description:"Describe input sources"`
 	Targets fifo.UrlMapping `short:"t" long:"target" description:"Describe targets"`
-	Shell   string          `long:"shell" default:"sh" description:"Command shell"`
+	Shell   string          `long:"shell" default:"" description:"Command shell"`
 
 	Preserve bool `long:"preserve" description:"Preserve created targets on command failure"`
 
@@ -83,9 +83,8 @@ func Main() (code int, mu *fifo.MultiError) {
 				Client: http.DefaultClient,
 			},
 			&fifo.S3Provider{
-				AccessKeyID:    os.Getenv("AWS_ACCESS_KEY_ID"),
-				SecretKey:      os.Getenv("AWS_SECRET_ACCESS_KEY"),
-				Endpoint:       os.Getenv("AWS_ENDPOINT"),
+				Endpoint: os.Getenv("AWS_ENDPOINT"),
+				Region:   os.Getenv("AWS_REGION"),
 			},
 		},
 
