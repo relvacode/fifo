@@ -50,9 +50,7 @@ func (c *Command) Start(ctx context.Context) (code int, mu *MultiError) {
 		TargetTags: c.t.Targets,
 	}
 
-	bin, args := c.t.Call.Cmdline()
-
-	args, err := gen.Replace(args)
+	args, err := gen.Replace(c.t.Call.Args)
 	if err != nil {
 		mu.Append(err)
 		return
@@ -92,7 +90,7 @@ func (c *Command) Start(ctx context.Context) (code int, mu *MultiError) {
 	// Close stdout and stderr when done
 	defer mu.Catch(stdout.Close, stderr.Close)
 
-	p := exec.CommandContext(ctx, bin, args...)
+	p := exec.CommandContext(ctx, c.t.Call.Executable, args...)
 	p.Stdin = stdin
 	p.Stdout = stdout
 	p.Stderr = stderr

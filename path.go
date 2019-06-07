@@ -50,7 +50,7 @@ var filenameRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 var extensionRunes = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 
 func randExtensionString(w runeWriter, n int) {
-	for i := 0; i < n; i ++ {
+	for i := 0; i < n; i++ {
 		_, _ = w.WriteRune(extensionRunes[rand.Intn(len(extensionRunes))])
 	}
 	_, _ = w.WriteRune('.')

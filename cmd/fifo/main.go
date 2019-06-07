@@ -15,7 +15,6 @@ import (
 type TaskOptions struct {
 	Sources fifo.UrlMapping `short:"s" long:"source" description:"Describe input sources"`
 	Targets fifo.UrlMapping `short:"t" long:"target" description:"Describe targets"`
-	Shell   string          `long:"shell" default:"" description:"Command shell"`
 
 	Preserve bool `long:"preserve" description:"Preserve created targets on command failure"`
 
@@ -24,8 +23,14 @@ type TaskOptions struct {
 	Stderr *fifo.Url `long:"stderr" description:"Write command STDERR to this target (default: STDERR)"`
 }
 
+type CommandOptions struct {
+	Executable string `required:"true"`
+	Args       []string
+}
+
 type Options struct {
 	TaskOptions `group:"Task Options"`
+	Command     CommandOptions `positional-args:"yes" required:"yes"`
 }
 
 func signalContext(ctx context.Context, signals ...os.Signal) context.Context {
@@ -46,10 +51,10 @@ func signalContext(ctx context.Context, signals ...os.Signal) context.Context {
 
 func Main() (code int, mu *fifo.MultiError) {
 	o := new(Options)
-	p := flags.NewParser(o, flags.PassDoubleDash|flags.HelpFlag)
+	p := flags.NewParser(o, flags.HelpFlag|flags.PassDoubleDash)
 	p.Name = "fifo"
 	p.LongDescription = "Native Cloud Streaming for Legacy Executables"
-	args, err := p.Parse()
+	_, err := p.Parse()
 	if err != nil {
 		mu = fifo.Catch(mu, err)
 		return
@@ -68,9 +73,8 @@ func Main() (code int, mu *fifo.MultiError) {
 
 	t := &fifo.Task{
 		Call: fifo.Call{
-			Shell:       o.Shell,
-			Executable:  args[0],
-			Args:        args[1:],
+			Executable:  o.Command.Executable,
+			Args:        o.Command.Args,
 			Environment: os.Environ(),
 		},
 		Preserve:       o.Preserve,

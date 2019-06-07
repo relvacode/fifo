@@ -76,7 +76,7 @@ func (mu *MultiError) Errors() []error {
 	return mu.err
 }
 
-func (mu *MultiError) ErrorOrNil() error {
+func (mu *MultiError) AsError() error {
 	if mu == nil || len(mu.err) == 0 {
 		return nil
 	}

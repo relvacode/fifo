@@ -5,27 +5,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"syscall"
 )
 
 type Call struct {
 	Executable       string
-	Shell            string
 	Args             []string
 	Environment      []string
 	WorkingDirectory string
-}
-
-func (c Call) Cmdline() (string, []string) {
-	if c.Shell != "" {
-		return c.Shell, []string{
-			"-c",
-			strings.Join(append([]string{c.Executable}, c.Args...), " "),
-		}
-	}
-
-	return c.Executable, c.Args
 }
 
 type Task struct {

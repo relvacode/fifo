@@ -28,7 +28,7 @@ func (s Sources) Copy(ctx context.Context) error {
 
 		g.Go(func() error {
 			_, err := io.Copy(pipe, src.Stream)
-			return Catch(nil, err, pipe.Close(), src.Stream.Close()).ErrorOrNil()
+			return Catch(nil, err, pipe.Close(), src.Stream.Close()).AsError()
 		})
 	}
 
@@ -61,7 +61,7 @@ func (t Targets) Copy(ctx context.Context) error {
 
 		g.Go(func() error {
 			_, err := io.Copy(tg.Stream, pipe)
-			return Catch(nil, err, tg.Stream.Close(), pipe.Close()).ErrorOrNil()
+			return Catch(nil, err, tg.Stream.Close(), pipe.Close()).AsError()
 		})
 	}
 

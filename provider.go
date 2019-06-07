@@ -184,7 +184,7 @@ func (o *S3PutObject) Close() error {
 	mu := new(MultiError)
 	mu.Catch(o.pw.Close)
 	mu.Append(o.g.Wait())
-	return mu.ErrorOrNil()
+	return mu.AsError()
 }
 
 func (o *S3PutObject) Destroy() error {
@@ -213,7 +213,7 @@ func (p S3Provider) Write(u *url.URL) (WriteDestroyCloser, error) {
 			Body:   pr,
 		})
 
-		return Catch(nil, err, pr.Close()).ErrorOrNil()
+		return Catch(nil, err, pr.Close()).AsError()
 	})
 
 	return &S3PutObject{
