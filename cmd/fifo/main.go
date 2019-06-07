@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jessevdk/go-flags"
 	"github.com/relvacode/fifo"
+	"github.com/relvacode/fifo/build"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -53,7 +54,7 @@ func Main() (code int, mu *fifo.MultiError) {
 	o := new(Options)
 	p := flags.NewParser(o, flags.HelpFlag|flags.PassDoubleDash)
 	p.Name = "fifo"
-	p.LongDescription = "Native Cloud Streaming for Legacy Executables"
+	p.LongDescription = fmt.Sprintf("%s\nVersion %s", "Native Cloud Streaming for Legacy Executables", build.AbsoluteVersion())
 	_, err := p.Parse()
 	if err != nil {
 		mu = fifo.Catch(mu, err)
