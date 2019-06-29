@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/pkg/errors"
-	"github.com/rlmcpherson/s3gof3r"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"net/http"
@@ -108,23 +107,6 @@ func (fp FileProvider) Write(u *url.URL) (WriteDestroyCloser, error) {
 	}, nil
 }
 
-type DestroyableS3Object struct {
-	Path   string
-	Bucket *s3gof3r.Bucket
-	io.WriteCloser
-}
-
-func (o *DestroyableS3Object) Destroy() error {
-	return o.Bucket.Delete(o.Path)
-}
-
-func nilStr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
 // Provides files from an S3-like HTTP interface
 type S3Provider struct {
 	Endpoint string
@@ -141,8 +123,8 @@ func (p S3Provider) Session(u *url.URL) (*session.Session, error) {
 		disableSsl = true
 	}
 	return session.NewSession(&aws.Config{
-		Endpoint:   nilStr(p.Endpoint),
-		Region:     nilStr(p.Region),
+		Endpoint:   aws.String(p.Endpoint),
+		Region:     aws.String(p.Region),
 		DisableSSL: &disableSsl,
 	})
 }
@@ -154,8 +136,8 @@ func (p S3Provider) Read(u *url.URL) (io.ReadCloser, error) {
 	}
 
 	o, err := s3.New(s).GetObject(&s3.GetObjectInput{
-		Bucket: nilStr(u.Host),
-		Key:    nilStr(u.Path),
+		Bucket: aws.String(u.Host),
+		Key:    aws.String(u.Path),
 	})
 
 	if err != nil {
@@ -189,8 +171,8 @@ func (o *S3PutObject) Close() error {
 
 func (o *S3PutObject) Destroy() error {
 	_, err := s3.New(o.s).DeleteObject(&s3.DeleteObjectInput{
-		Key:    nilStr(o.key),
-		Bucket: nilStr(o.bucket),
+		Key:    aws.String(o.key),
+		Bucket: aws.String(o.bucket),
 	})
 	return err
 }
@@ -208,8 +190,8 @@ func (p S3Provider) Write(u *url.URL) (WriteDestroyCloser, error) {
 	g, ctx := errgroup.WithContext(context.Background())
 	g.Go(func() error {
 		_, err := uploader.UploadWithContext(ctx, &s3manager.UploadInput{
-			Bucket: nilStr(u.Host),
-			Key:    nilStr(u.Path),
+			Bucket: aws.String(u.Host),
+			Key:    aws.String(u.Path),
 			Body:   pr,
 		})
 
