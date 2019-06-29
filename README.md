@@ -48,6 +48,10 @@ Requires the environment parameters `AWS_ACCESS_KEY`, `AWS_SECRET_KEY` and `AWS_
 s3://bucket/path/to/file.txt
 ```
 
+```
+s3://bucket/path/to/file.txt?acl=public-read&type=text/plain
+```
+
 #### `http://`, `https://`
 
 Stream a HTTP URL

@@ -107,6 +107,36 @@ func (fp FileProvider) Write(u *url.URL) (WriteDestroyCloser, error) {
 	}, nil
 }
 
+type S3PutObject struct {
+	s *session.Session
+	g *errgroup.Group
+
+	key    string
+	bucket string
+
+	pr io.ReadCloser
+	pw io.WriteCloser
+}
+
+func (o *S3PutObject) Write(b []byte) (int, error) {
+	return o.pw.Write(b)
+}
+
+func (o *S3PutObject) Close() error {
+	mu := new(MultiError)
+	mu.Catch(o.pw.Close)
+	mu.Append(o.g.Wait())
+	return mu.AsError()
+}
+
+func (o *S3PutObject) Destroy() error {
+	_, err := s3.New(o.s).DeleteObject(&s3.DeleteObjectInput{
+		Key:    aws.String(o.key),
+		Bucket: aws.String(o.bucket),
+	})
+	return err
+}
+
 // Provides files from an S3-like HTTP interface
 type S3Provider struct {
 	Endpoint string
@@ -147,34 +177,15 @@ func (p S3Provider) Read(u *url.URL) (io.ReadCloser, error) {
 	return o.Body, nil
 }
 
-type S3PutObject struct {
-	s *session.Session
-	g *errgroup.Group
-
-	key    string
-	bucket string
-
-	pr io.ReadCloser
-	pw io.WriteCloser
-}
-
-func (o *S3PutObject) Write(b []byte) (int, error) {
-	return o.pw.Write(b)
-}
-
-func (o *S3PutObject) Close() error {
-	mu := new(MultiError)
-	mu.Catch(o.pw.Close)
-	mu.Append(o.g.Wait())
-	return mu.AsError()
-}
-
-func (o *S3PutObject) Destroy() error {
-	_, err := s3.New(o.s).DeleteObject(&s3.DeleteObjectInput{
-		Key:    aws.String(o.key),
-		Bucket: aws.String(o.bucket),
-	})
-	return err
+func (p S3Provider) uploadInput(u *url.URL, r io.Reader) *s3manager.UploadInput {
+	q := u.Query()
+	return &s3manager.UploadInput{
+		Bucket:      aws.String(u.Host),
+		Key:         aws.String(u.Path),
+		ACL:         aws.String(q.Get("acl")),
+		ContentType: aws.String(q.Get("type")),
+		Body:        r,
+	}
 }
 
 func (p S3Provider) Write(u *url.URL) (WriteDestroyCloser, error) {
@@ -189,12 +200,7 @@ func (p S3Provider) Write(u *url.URL) (WriteDestroyCloser, error) {
 
 	g, ctx := errgroup.WithContext(context.Background())
 	g.Go(func() error {
-		_, err := uploader.UploadWithContext(ctx, &s3manager.UploadInput{
-			Bucket: aws.String(u.Host),
-			Key:    aws.String(u.Path),
-			Body:   pr,
-		})
-
+		_, err := uploader.UploadWithContext(ctx, p.uploadInput(u, pr))
 		return Catch(nil, err, pr.Close()).AsError()
 	})
 
