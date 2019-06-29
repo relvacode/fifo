@@ -1,17 +1,14 @@
-# Fifo
+Fast remote storage streaming for legacy executables
 
-Real-time data streaming to and from S3 and other back-ends using the power of named pipes.
+### How It Works
 
-Allows legacy applications to easily stream data to file stores like S3 without the need for FUSE file systems.
+You define some sources and/or targets as a mapping of some tag to a URL of the source/target object.
 
-## How It Works
+Then, using templates define a command to execute using those sources and destinations. 
 
-You define some sources and targets as a mapping of some name to a URL of the source/target file.
+Internally, fifo will replace those tags with a real path on your system to a named pipes whose other end reads or writes directly to the remote object.
 
-Using Go templates define what sources and targets to use as command line arguments.
-`fifo` will then render the templates with a real path to a named pipe on the file system.
-
-## Examples
+### Examples
 
 __Backup a directory to a tar archive in S3__
 
@@ -31,7 +28,7 @@ __Grep a file in S3 and upload the matches to S3__
 fifo -s log=s3://bucket/log-file.txt --stdout s3://bucket/grepped.txt -- grep something %{log}
 ```
 
-## Providers
+### Providers
 
 #### `file://`
 
