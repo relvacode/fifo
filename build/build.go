@@ -1,13 +1,17 @@
 package build
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 var (
 	Version string = "localbuild"
 	Commit  string = ""
+	Build   string = ""
 )
 
-func trimRight(s string, n int) string {
+func trim(s string, n int) string {
 	if len(s) < n {
 		return s
 	}
@@ -15,9 +19,17 @@ func trimRight(s string, n int) string {
 }
 
 func AbsoluteVersion() string {
-	if Commit == "" {
-		return Version
+	var s strings.Builder
+
+	fmt.Fprint(&s, Version)
+
+	if Commit != "" {
+		fmt.Fprintf(&s, "-%s", trim(Commit, 8))
 	}
 
-	return fmt.Sprintf("%s-%s", Version, trimRight(Commit, 8))
+	if Build != "" {
+		fmt.Fprintf(&s, "-%s", Build)
+	}
+
+	return s.String()
 }
