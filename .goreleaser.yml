@@ -4,7 +4,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X "github.com/relvacode/fifo/build.Version={{.Tag}}" -X "github.com/relvacode/fifo/build.Commit={{.ShortCommit}}" -X "github.com/relvacode/fifo/build.Build=travis{{Env.TRAVIS_JOB_NUMBER}}"
+      - -s -w -X "github.com/relvacode/fifo/build.Version={{.Tag}}" -X "github.com/relvacode/fifo/build.Commit={{.ShortCommit}}" -X "github.com/relvacode/fifo/build.Build=travis{{.Env.TRAVIS_JOB_NUMBER}}"
     ignore:
       - goos: darwin
         goarch: 386
