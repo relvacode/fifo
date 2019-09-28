@@ -7,6 +7,7 @@ import (
 	"github.com/valyala/fasttemplate"
 	"io"
 	"net/url"
+	"strings"
 )
 
 // A PipeProvider is given a URL and should return a Source or Target pipe.
@@ -27,6 +28,7 @@ type TemplateGenerator struct {
 }
 
 func (g *TemplateGenerator) provide(w io.Writer, tag string) (int, error) {
+	tag = strings.TrimSpace(tag)
 	st, sok := g.SourceTags[tag]
 	tt, tok := g.TargetTags[tag]
 	if sok && tok {

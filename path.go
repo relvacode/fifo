@@ -2,16 +2,72 @@ package fifo
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
+	"github.com/valyala/fasttemplate"
+	"io"
 	"math/rand"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
+	"time"
 )
+
+var functions = map[string]func() string{
+	"date": func() string {
+		return time.Now().Format("2006-01-02")
+	},
+	"time": func() string {
+		return time.Now().Format("15:04:05")
+	},
+	"datetime": func() string {
+		return time.Now().Format("2006-01-02T15:04:05")
+	},
+	"hostname": func() string {
+		host, _ := os.Hostname()
+		return host
+	},
+	"uid": func() string {
+		return strconv.Itoa(os.Getuid())
+	},
+	"gid": func() string {
+		return strconv.Itoa(os.Getgid())
+	},
+	"random": func() string {
+		return fmt.Sprintf("%06d", rand.Intn(999999))
+	},
+}
 
 type Url url.URL
 
+func (f *Url) provide(w io.Writer, tag string) (int, error) {
+	fn, ok := functions[strings.TrimSpace(tag)]
+	if !ok {
+		return 0, errors.Errorf("No built-in template function with name %q", tag)
+	}
+
+	v := url.PathEscape(fn())
+	return fmt.Fprint(w, v)
+}
+
+func (f *Url) replace(arg string) (string, error) {
+	t := fasttemplate.New(arg, "@{", "}")
+	var b bytes.Buffer
+	_, err := t.ExecuteFunc(&b, f.provide)
+	if err != nil {
+		return "", err
+	}
+
+	return b.String(), nil
+}
+
 func (f *Url) UnmarshalFlag(value string) error {
-	u, err := url.Parse(value)
+	rendered, err := f.replace(value)
+	if err != nil {
+		return err
+	}
+	u, err := url.Parse(rendered)
 	if err != nil {
 		return err
 	}

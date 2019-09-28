@@ -81,9 +81,7 @@ func Main() (code int, mu *fifo.MultiError) {
 		Preserve:       o.Preserve,
 		MountDirectory: temporaryLocation,
 		Providers: []fifo.Provider{
-			fifo.FileProvider{
-				Create: os.FileMode(0666),
-			},
+			fifo.FileProvider{},
 			&fifo.HTTPProvider{
 				Client: http.DefaultClient,
 			},

@@ -35,10 +35,10 @@ docker run relvacode/fifo
 
 ### Examples
 
-__Backup a directory to a tar archive in S3__
+__Backup a directory to a tar archive in S3 using the current date__
 
 ```
-fifo -t archive=s3://bucket/archive.tar.gz -- tar -C /directory -cvz . -f %{archive}
+fifo -t archive=s3://bucket/archive-@{date}.tar.gz -- tar -C /directory -cvz . -f %{archive}
 ```
 
 __Calculate the MD5 sum of a file in S3 using openssl__
@@ -53,9 +53,30 @@ __Grep a file in S3 and upload the matches to S3__
 fifo -s log=s3://bucket/log-file.txt --stdout s3://bucket/grepped.txt -- grep something %{log}
 ```
 
-### Providers
+### Sources and Targets
 
-#### `file://`
+Input and output targets are described as regular URLs. 
+
+The scheme of the URL marks which source or target provider is used to find the object.
+
+#### Templates
+
+`@{ function }` templates can be used anywhere in a URL. 
+
+These will get replaced with the return value of the function.
+
+| Function | Returns |
+| -------- | ------- |
+| `date` | `YYYY-MM-dd` of the current date |
+| `time` | `HH:mm:ss` of the current time |
+| `datetime` | `YYYY-MM-ddTHH:mm:ss` of the current date-time |
+| `hostname` | The hostname as reported by the OS |
+| `uid` | UID of the current user |
+| `gid` | GID of the current user |
+| `random` | A six digit string from a random number between 000000 and 999999 (inclusive) |
+#### Providers
+
+##### `file://`
 
 Opens or creates a file on the local filesystem
 
@@ -63,7 +84,13 @@ Opens or creates a file on the local filesystem
 file://./log.txt
 ```
 
-#### `s3://`, `s3+insecure://`
+| Query Parameter | Behaviour |
+| --------------- | --------- |
+| `?append` | Append to the end of a file if it already exists. Defaults to truncate the file before writing |
+| `?chmod` | When creating a file use these chmod style permissions. Defaults to `0644` |
+
+
+##### `s3://` `s3+insecure://`
 
 Downloads or uploads an object in S3.
 
@@ -77,7 +104,12 @@ s3://bucket/path/to/file.txt
 s3://bucket/path/to/file.txt?acl=public-read&type=text/plain
 ```
 
-#### `http://`, `https://`
+| Query Parameter | Behaviour |
+| --------------- | --------- |
+| `?acl` | Set an [Amazon S3 canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) on the created object |
+| `?type` | Set the Content-Type of the created object |
+
+##### `http://` `https://`
 
 Stream an HTTP(s) URL
 

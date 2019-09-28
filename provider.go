@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 type Provider interface {
@@ -79,7 +80,6 @@ func (f *DestroyableFile) Destroy() error {
 }
 
 type FileProvider struct {
-	Create os.FileMode
 }
 
 func (FileProvider) Schema() []string {
@@ -91,12 +91,32 @@ func (FileProvider) Target(u *url.URL) string {
 }
 
 func (fp FileProvider) Read(u *url.URL) (io.ReadCloser, error) {
-	return os.OpenFile(fp.Target(u), os.O_RDONLY, os.FileMode(0600))
+	return os.OpenFile(fp.Target(u), os.O_RDONLY, os.FileMode(0644))
 }
 
 func (fp FileProvider) Write(u *url.URL) (WriteDestroyCloser, error) {
+	var (
+		flag = os.O_WRONLY | os.O_CREATE
+		mode = os.FileMode(0644)
+		q    = u.Query()
+	)
+
+	if q.Get("append") != "" {
+		flag |= os.O_APPEND
+	} else {
+		flag |= os.O_TRUNC
+	}
+
+	if chmod := q.Get("chmod"); chmod != "" {
+		m, err := strconv.ParseUint(chmod, 8, 32)
+		if err != nil {
+			return nil, errors.Wrapf(err, "invalid file mode option %q", chmod)
+		}
+		mode = os.FileMode(m)
+	}
+
 	path := fp.Target(u)
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, fp.Create)
+	f, err := os.OpenFile(path, flag, mode)
 	if err != nil {
 		return nil, err
 	}
