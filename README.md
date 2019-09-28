@@ -1,12 +1,37 @@
-Fast remote storage streaming for legacy executables
+Direct streaming to and from remote object store providers like S3 for legacy commands
+
+[![Build Status](https://travis-ci.org/relvacode/fifo.svg?branch=master)](https://travis-ci.org/relvacode/fifo)
 
 ### How It Works
 
-You define some sources and/or targets as a mapping of some tag to a URL of the source/target object.
+Rewrite a file argument, stdin, stdout or stderr to a remote object URL such as S3.
 
-Then, using templates define a command to execute using those sources and destinations. 
+It will create a named pipe in a temporary directory and will read or write data to the named pipe for a wrapped command to execute on.
 
-Internally, fifo will replace those tags with a real path on your system to a named pipes whose other end reads or writes directly to the remote object.
+It's an easy to use single binary distributable with zero dependencies. No need for FUSE or large temporary staging directories to store intermediate files before downloading or uploading to S3.
+
+### Install
+
+#### Mac OS
+
+```
+brew tap relvacode/fifo
+brew install fifo
+```
+
+#### Linux
+
+Replace `{version}` with your preffered [release](https://github.com/relvacode/fifo/releases)
+
+```
+curl -Ls https://github.com/relvacode/fifo/releases/download/v{version}/fifo_{version}_linux_x86_64.tar.gz | tar -xvzf - -C /usr/bin/ fifo
+```
+
+#### Docker
+
+```
+docker run relvacode/fifo
+```
 
 ### Examples
 
@@ -42,7 +67,7 @@ file://./log.txt
 
 Downloads or uploads an object in S3.
 
-Requires the environment parameters `AWS_ACCESS_KEY`, `AWS_SECRET_KEY` and `AWS_ENDPOINT` are set.
+Requires the environment parameters `AWS_ACCESS_KEY`, `AWS_SECRET_KEY` and `AWS_REGION` are set.
 
 ```
 s3://bucket/path/to/file.txt
@@ -54,7 +79,7 @@ s3://bucket/path/to/file.txt?acl=public-read&type=text/plain
 
 #### `http://`, `https://`
 
-Stream a HTTP URL
+Stream an HTTP(s) URL
 
 ```
 https://httpbin.org/stream/1
